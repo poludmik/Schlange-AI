@@ -3,6 +3,7 @@ import random
 import pygame
 import math
 from random import randint
+from tqdm import tqdm
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -38,17 +39,23 @@ class SnakeGame:
             self.tile_color = WHITE
             self.margin_color = DARK_BLUE
 
+        self.directions = {"left":[-1, 0], "right":[1, 0], "up":[0, -1], "down":[0, 1]}
+
         self.screen = pygame.display.set_mode([self.window_size + self.margin, self.window_size + self.margin + 30])
         pygame.display.set_caption("Schlange")
+        programIcon = pygame.image.load('moray_huge.jpg')
+        pygame.display.set_icon(programIcon)
         self.clock = pygame.time.Clock()
 
-        pygame.font.init()  # you have to call this at the start,
-        self.myfont = pygame.font.SysFont('Comic Sans MS', 20)
+        pygame.font.init()
+        self.myfont = pygame.font.SysFont('hpsimplifiedjpanregular', 20)
 
     def play_games(self):
         self.game_running = True
         self.start_new_game()
         quitting = False
+
+        print("Control keys: W,A,D.")
 
         while not quitting:
             if not self.game_running:
@@ -62,21 +69,68 @@ class SnakeGame:
 
                 # checking if keydown event happened or not
                 if event.type == pygame.KEYDOWN:
-                    # checking if key "A" was pressed
                     if event.key == pygame.K_a:
-                        #print("Key A has been pressed")
                         self.current_snake.make_step_by_given_action(LEFT)
-                    # checking if key "J" was pressed
                     if event.key == pygame.K_w:
-                        #print("Key W has been pressed")
                         self.current_snake.make_step_by_given_action(STRAIGHT)
-                    # checking if key "P" was pressed
                     if event.key == pygame.K_d:
-                        #print("Key D has been pressed")
                         self.current_snake.make_step_by_given_action(RIGHT)
 
         game.end_screen()
 
+    def play_given_action_for_learning(self, action):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # If user clicked close button
+                quitting = True
+                game.end_screen()
+                print("Closing window.")
+
+        reward = self.current_snake.make_step_by_given_action(action)
+
+        return reward
+
+    def ensure_game_is_running(self):
+        pygame.event.pump()
+        if not self.game_running:
+            self.start_new_game()
+            self.game_running = True
+
+    def get_current_state(self):
+        """
+        state[11] = danger: [ straight, left, right,
+                 direction:   left, right, up, down
+                      food:   left, right, up, down]
+        """
+        state = [0] * 11
+
+        # If there are dangers on sratight, left or right tile
+        for idx, action in enumerate([STRAIGHT, LEFT, RIGHT]):
+            new_head_direction = self.current_snake.rotate_head_direction(self.current_snake.head_direction, action)
+            next_tile = (self.current_snake.head_position[0] + new_head_direction[1],
+                         self.current_snake.head_position[1] + new_head_direction[0])
+
+            if (next_tile[0] < 0 or next_tile[0] >= game.width or next_tile[1] < 0 or next_tile[1] >= game.height) or \
+                    (next_tile[0], next_tile[1]) in self.current_snake.rest_of_body_positions:
+                # next tile in a wall or in the snake body
+                state[idx] = 1
+
+        # Direction of a head
+        for idx, direction in enumerate(self.directions):
+            if self.current_snake.head_direction == self.directions[direction]:
+                state[idx + 3] = 1
+                break
+
+        # Where is food
+        if self.food_position[1] < self.current_snake.head_position[1]:
+            state[7] = 1 # food is to the left to the head
+        if self.food_position[1] > self.current_snake.head_position[1]:
+            state[8] = 1 # food is to the right to the head
+        if self.food_position[0] < self.current_snake.head_position[0]:
+            state[9] = 1  # food is up to the head
+        if self.food_position[0] > self.current_snake.head_position[0]:
+            state[10] = 1 # food is down to the head
+
+        return state
 
     def start_new_game(self):
         self.screen.fill(self.margin_color)
@@ -88,7 +142,7 @@ class SnakeGame:
                                   (self.margin + self.cell_height) * row + self.margin,
                                    self.cell_width, self.cell_height]
                                  )
-                self.clock.tick(400)
+                self.clock.tick(10000)
                 pygame.display.flip()
 
         self.food_position = (random.randint(1, self.width - 2), random.randint(1, self.height - 2))
@@ -102,7 +156,6 @@ class SnakeGame:
         textsurface = self.myfont.render(str(len(self.current_snake.rest_of_body_positions)), False, self.tile_color)
         self.screen.blit(textsurface, (10, self.window_size))
         pygame.display.flip()
-
 
     def set_color_to_one_cell(self, r, c, color):
         pygame.draw.rect(self.screen, color,
@@ -152,13 +205,20 @@ class SnakeGame:
 class Snake:
 
     def __init__(self, game_local):
-        self.head_position = (random.randint(1, game_local.width - 2), random.randint(1, game_local.height - 2))
+        self.head_position = self.generate_random_starting_point()
         self.head_direction = random.choice([[1, 0], [0, -1], [-1, 0], [0, 1]])
         self.rest_of_body_positions=[]
         self.length = 1
 
     def __del__(self):
-        print("Deleted snake")
+        #print("Deleted snake")
+        pass
+
+    def generate_random_starting_point(self):
+        startin_point = (random.randint(1, game.width - 2), random.randint(1, game.height - 2))
+        while startin_point == game.food_position:
+            startin_point = (random.randint(1, game.width - 2), random.randint(1, game.height - 2))
+        return startin_point
 
     def make_step_by_given_action(self, action): # action is in form of [0-1, 0-1, 0-1]
         reward = -0.01
@@ -168,19 +228,19 @@ class Snake:
         next_tile = (self.head_position[0] + new_head_direction[1], self.head_position[1] + new_head_direction[0])
 
         if next_tile[0] < 0 or next_tile[0] >= game.width or next_tile[1] < 0 or next_tile[1] >= game.height:
-            print("Wall collision")
+            #print("Wall collision")
             reward = -10
             game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            game.clock.tick(1)
+            game.clock.tick(5)
             pygame.display.flip()
             game.game_running = False
             return reward
 
         elif (next_tile[0], next_tile[1]) in self.rest_of_body_positions:
-            print("Body collision")
+            #print("Body collision")
             reward = -10
             game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            game.clock.tick(1)
+            game.clock.tick(5)
             pygame.display.flip()
             game.game_running = False
             return reward
@@ -230,7 +290,6 @@ class Snake:
 
         pygame.display.flip()
 
-
     def rotate_head_direction(self, vector, where):
         if where == LEFT:    # -pi/2
             return [vector[1], -vector[0]]
@@ -241,9 +300,23 @@ class Snake:
 
 
 if __name__ == "__main__":
-    print("Start")
+    print("Starting gaming")
 
     game = SnakeGame(8, True)
 
-    game.play_games()
+    play_on_keyboard = False
+
+    if play_on_keyboard:
+        game.play_games()
+    else:
+        # for learning, i.e.
+        for _ in tqdm(range(100), position=0, leave=True):
+            game.ensure_game_is_running()
+            # get state
+            # decide
+            game.play_given_action_for_learning(action=random.choice([LEFT, RIGHT, STRAIGHT]))
+            # get reward
+            # store episode to memory..?:)
+            pygame.time.delay(100)
+
 
