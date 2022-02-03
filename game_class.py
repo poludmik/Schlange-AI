@@ -14,16 +14,18 @@ DARK_BLUE = (0, 25, 51)
 LEFT = [0, 1, 0]
 RIGHT = [0, 0, 1]
 STRAIGHT = [1, 0, 0]
+NEG_REWARD = -10
+POS_REWARD = 10
 
 class SnakeGame:
 
-    def __init__(self, size, dark=True, window_size=400):
+    def __init__(self, size_of_gamefield=10, dark=True, window_size=400):
         self.window_size = window_size
         self.margin = 1
-        self.width = size
-        self.height = size
-        self.cell_width = self.window_size// size - self.margin
-        self.cell_height = self.window_size// size - self.margin
+        self.width = size_of_gamefield
+        self.height = size_of_gamefield
+        self.cell_width = self.window_size// size_of_gamefield - self.margin
+        self.cell_height = self.window_size// size_of_gamefield - self.margin
         self.mode_is_dark = dark
         self.game_running = False
         self.screen = None

@@ -13,6 +13,8 @@ DARK_BLUE = (0, 25, 51)
 LEFT = [0, 1, 0]
 RIGHT = [0, 0, 1]
 STRAIGHT = [1, 0, 0]
+NEG_REWARD = -10
+POS_REWARD = 10
 
 
 class Snake:
@@ -42,7 +44,7 @@ class Snake:
 
         if next_tile[0] < 0 or next_tile[0] >= self.game.width or next_tile[1] < 0 or next_tile[1] >= self.game.height:
             #print("Wall collision")
-            reward = -10
+            reward = NEG_REWARD
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
             self.game.clock.tick(5)
             pygame.display.flip()
@@ -51,7 +53,7 @@ class Snake:
 
         elif (next_tile[0], next_tile[1]) in self.rest_of_body_positions:
             #print("Body collision")
-            reward = -10
+            reward = NEG_REWARD
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
             self.game.clock.tick(5)
             pygame.display.flip()
@@ -60,7 +62,7 @@ class Snake:
 
         elif next_tile == self.game.food_position:
             # found food
-            reward = 10
+            reward = POS_REWARD
             self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], self.game.tile_color)
 
             # random food coordinates
