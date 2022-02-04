@@ -1,5 +1,5 @@
+import copy
 import math
-
 import snake
 import game_class
 import matplotlib.pyplot as plt
@@ -7,9 +7,12 @@ import pygame
 import random
 import torch
 import numpy as np
+import pandas as pd
 import model
 import torch.nn.functional as F
 import loss_function
+import experience_stack
+
 
 NEG_REWARD = -10
 POS_REWARD = 10
@@ -19,21 +22,34 @@ STRAIGHT = [1, 0, 0]
 DONE = 666
 
 
+def plot_info(plot, epochas, losses, scores):
+    # plt.plot(epochas, losses, '-k', label='loss')
+    # plt.plot(epochas, scores, '-b', label='score')
+
+    plot.set_xdata(np.append(plot.get_xdata(), losses))
+    plot.set_ydata(np.append(plot.get_ydata(), epochas))
+
+    # trend
+    df = pd.DataFrame(np.transpose(np.array([losses])))
+    # plt.plot(df.expanding(min_periods=10).mean(), 'b')
+    plt.draw()
+
+
 class Agent:
 
-    def __init__(self, size_of_gamefield=10):
-        self.game = game_class.SnakeGame(size_of_gamefield, dark=True, window_size=400)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def __init__(self, size_of_gamefield=10, animate=False):
+        self.game = game_class.SnakeGame(size_of_gamefield, dark=True, window_size=400, animate=animate)
+        self.memory_stack = experience_stack.Memory()
+        self.losses = []
+        self.epochas = []
+        self.scores = []
 
     def get_one_transition(self, Qnet_model, expolation_probability=0.5):
         self.game.ensure_game_is_running()
 
-        state0 = torch.FloatTensor(self.game.get_current_state())
-        state0 = state0.to(self.device)
+        state0 = self.game.get_current_state()
 
-        # decide on action
-
-        Q_values = Qnet_model.forward_pass(state0)
+        Q_values = Qnet_model.forward_pass(torch.FloatTensor(state0))
 
         if random.uniform(0, 1) < expolation_probability:
             action = random.choice([LEFT, RIGHT, STRAIGHT])
@@ -41,104 +57,88 @@ class Agent:
             action = [0, 0, 0]
             action[torch.argmax(Q_values).item()] = 1
 
-        # print("\nAction:", action, type(action))
-
         reward = self.game.play_given_action_for_learning(action=action)
 
         if reward == NEG_REWARD:
-            state1 = torch.FloatTensor(self.game.get_current_state())
-            state1[0] = NEG_REWARD
+            state1 = self.game.get_current_state()
+            state1[0] = DONE
         else:
-            state1 = torch.FloatTensor(self.game.get_current_state())
+            state1 = self.game.get_current_state()
 
-        state1 = state1.to(self.device)
-
-        # pygame.time.delay(100) # TODO, delete probably
-
-        transition = [state0, action, reward, state1, Q_values]
-        # store transition to memory..?:)
-
+        transition = (state0, action, reward, state1)
         return transition
 
 
-    def train(self, model_path=None, epochs=100):
-        epochs = epochs
+    def train(self, model_to_train, model_target, batch_size):
 
-        if not torch.cuda.is_available():
-            print("Cuda is not available.")
+        # get a batch of transitions
+        batch = random.sample(self.memory_stack.stack, batch_size)
+        #batch.to(self.device)
 
-        learning_rate = 0.01
-        batch_size = 4
+        loss_fc = loss_function.BellmanLoss(model_to_train, discount_factor=0.9)
 
-        trained_model = model.Qnet()
-        loss_fc = loss_function.BellmanLoss(trained_model, discount_factor=0.9)
+        # TODO: compute loss
+        loss_local = loss_fc.compute_loss(batch, model_target, model_to_train)
 
-        torch.autograd.set_detect_anomaly(True)
+        # TODO: do the backward pass and update the gradients
+        loss_local.backward()
+        optimizer.step()
+        optimizer.zero_grad()
 
-        if model_path is not None:
-            trained_model.load_state_dict(torch.load(model_path, map_location='cpu'))
-        trained_model.to(self.device)
-
-        # TODO load dataset maybe
-
-        optimizer = torch.optim.Adam(trained_model.parameters(), lr=learning_rate)
-
-        losses = []
-        epochas = []
-        scores = []
-        plt.style.use('seaborn-whitegrid')
-        for epoch in range(epochs):
-            # train
-
-            # TODO: do a forward pass
-            transition = self.get_one_transition(Qnet_model=trained_model)
-
-            # TODO: compute loss
-            loss = loss_fc.compute_loss(transition=transition)
-
-            # TODO: do the backward pass and update the gradients
-            if loss.item() > 10.0:
-                print("LOSS sqrt (>0.1):", math.sqrt(loss.item()))
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-            # TODO: update target net
-
-            epochas.append(epoch)
-            losses.append(loss.item())
-            scores.append(50 * len(self.game.current_snake.rest_of_body_positions))
-
-            if (epoch + 1) % 75 == 0:
-                plt.plot(epochas, losses, '-k', label='loss')
-                #plt.plot(epochas, scores, '-b', label='score')
-
-                # trend
-                z = np.polyfit(epochas, losses, 1)
-                p = np.poly1d(z)
-                plt.plot(epochas, 10 * p(epochas), "b-")
-
-                plt.show()
-
-        plt.plot(epochas, losses, '-k', label='loss')
-
-        # trend
-        z = np.polyfit(epochas, losses, 1)
-        p = np.poly1d(z)
-        plt.plot(epochas, p(epochas), "b-")
-
-        # plt.plot(epochas, scores, '-b', label='score')
-        plt.show()
-
-        return True
-
+        return loss_local.item()
 
 
 if __name__ == "__main__":
     print("Initiated learning process.")
+    agent = Agent(size_of_gamefield=8, animate=False)
+    minimal_memory_size = 100
+    model_path = None
+    plt.style.use('seaborn-whitegrid')
 
-    agent = Agent(size_of_gamefield=5)
+    learning_rate = 0.001
+    counter_of_trainings = 0
 
-    agent.train(model_path=None, epochs=10000)
+    hl, = plt.plot([], [])
+
+    trained_model = model.Qnet()
+
+    # torch.autograd.set_detect_anomaly(True)
+
+    if model_path is not None:
+        trained_model.load_state_dict(torch.load(model_path, map_location='cpu'))
+
+    optimizer = torch.optim.Adam(trained_model.parameters(), lr=learning_rate)
+
+    target_model = copy.deepcopy(trained_model)
+
+    episode = 0
+    while True:
+        episode += 1
+        # TODO gain more transitions
+        game_over = False
+        steps = 0
+        while not game_over:
+            one_transition = agent.get_one_transition(trained_model, expolation_probability=0.1)
+
+            agent.memory_stack.push(one_transition)
+
+            if one_transition[3][0] == DONE:
+                game_over = True
+
+            if agent.memory_stack.number_of_items < minimal_memory_size:
+                continue
+
+            if game_over:
+                loss = agent.train(trained_model, target_model, minimal_memory_size)
+                counter_of_trainings += 1
+                agent.epochas.append(counter_of_trainings)
+                agent.losses.append(loss)
+                agent.scores.append(len(agent.game.current_snake.rest_of_body_positions))
+
+        # update target network (copy trained model)
+        if episode % 100 == 0:
+            print("Episode:", episode,"  Average score:", sum(agent.scores) / 100.0)
+            agent.scores = []
+            target_model = copy.deepcopy(trained_model)
 
 

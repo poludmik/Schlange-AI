@@ -13,8 +13,8 @@ DARK_BLUE = (0, 25, 51)
 LEFT = [0, 1, 0]
 RIGHT = [0, 0, 1]
 STRAIGHT = [1, 0, 0]
-NEG_REWARD = -5.0
-POS_REWARD = 5.0
+NEG_REWARD = -10.0
+POS_REWARD = 10.0
 
 
 class Snake:
@@ -36,7 +36,7 @@ class Snake:
         return startin_point
 
     def make_step_by_given_action(self, action): # action is in form of [0-1, 0-1, 0-1]
-        reward = -0.1
+        reward = 0.0
 
         new_head_direction = self.rotate_head_direction(self.head_direction, action)
 
@@ -45,25 +45,28 @@ class Snake:
         if next_tile[0] < 0 or next_tile[0] >= self.game.width or next_tile[1] < 0 or next_tile[1] >= self.game.height:
             #print("Wall collision")
             reward = NEG_REWARD
-            self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            self.game.clock.tick(1000)
-            pygame.display.flip()
+            if self.game.animate:
+                self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
+                self.game.clock.tick(1000)
+                pygame.display.flip()
             self.game.game_running = False
             return reward
 
         elif (next_tile[0], next_tile[1]) in self.rest_of_body_positions:
             #print("Body collision")
             reward = NEG_REWARD
-            self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            self.game.clock.tick(1000)
-            pygame.display.flip()
+            if self.game.animate:
+                self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
+                self.game.clock.tick(1000)
+                pygame.display.flip()
             self.game.game_running = False
             return reward
 
         elif next_tile == self.game.food_position:
             # found food
             reward = POS_REWARD
-            self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], self.game.tile_color)
+            if self.game.animate:
+                self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], self.game.tile_color)
 
             # random food coordinates
             self.game.food_position = (random.randint(0, self.game.width-1), random.randint(0, self.game.height-1))
@@ -72,15 +75,17 @@ class Snake:
                     or self.game.food_position == next_tile:
                 self.game.food_position = (random.randint(0, self.game.width-1), random.randint(0, self.game.height-1))
 
-            self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], GREEN) # draw new food
+            if self.game.animate:
+                self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], GREEN) # draw new food
 
         # move snake
         if reward != POS_REWARD and len(self.rest_of_body_positions): # if not growing this step, delete tail
-            self.game.set_color_to_one_cell(self.rest_of_body_positions[0][0], self.rest_of_body_positions[0][1],
-                                       self.game.tile_color)
+            if self.game.animate:
+                self.game.set_color_to_one_cell(self.rest_of_body_positions[0][0], self.rest_of_body_positions[0][1],
+                                           self.game.tile_color)
             self.rest_of_body_positions.pop(0)
             self.rest_of_body_positions.append(self.head_position)
-        if reward != POS_REWARD and len(self.rest_of_body_positions) == 0:
+        if reward != POS_REWARD and len(self.rest_of_body_positions) == 0 and self.game.animate:
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1],
                                        self.game.tile_color)
         if reward == POS_REWARD:
@@ -88,14 +93,13 @@ class Snake:
 
         self.head_position = next_tile
         self.head_direction = new_head_direction
-        self.draw_snake()
+        if self.game.animate:
+            self.draw_snake()
 
         return reward
 
     def draw_snake(self):
         self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], STRONGER_BLUE)
-
-        self.game.clock.tick(1000)
 
         # Draw snake fragments
         for body_fragment in self.rest_of_body_positions:
@@ -108,6 +112,8 @@ class Snake:
         self.game.screen.blit(textsurface, (10, self.game.window_size))
 
         pygame.display.flip()
+
+        self.game.clock.tick(10)
 
     def rotate_head_direction(self, vector, where):
         if where == LEFT:    # -pi/2
