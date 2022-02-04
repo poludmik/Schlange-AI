@@ -13,8 +13,8 @@ DARK_BLUE = (0, 25, 51)
 LEFT = [0, 1, 0]
 RIGHT = [0, 0, 1]
 STRAIGHT = [1, 0, 0]
-NEG_REWARD = -10
-POS_REWARD = 10
+NEG_REWARD = -5.0
+POS_REWARD = 5.0
 
 
 class Snake:
@@ -36,7 +36,7 @@ class Snake:
         return startin_point
 
     def make_step_by_given_action(self, action): # action is in form of [0-1, 0-1, 0-1]
-        reward = -0.01
+        reward = -0.1
 
         new_head_direction = self.rotate_head_direction(self.head_direction, action)
 
@@ -46,7 +46,7 @@ class Snake:
             #print("Wall collision")
             reward = NEG_REWARD
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            self.game.clock.tick(5)
+            self.game.clock.tick(1000)
             pygame.display.flip()
             self.game.game_running = False
             return reward
@@ -55,7 +55,7 @@ class Snake:
             #print("Body collision")
             reward = NEG_REWARD
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-            self.game.clock.tick(5)
+            self.game.clock.tick(1000)
             pygame.display.flip()
             self.game.game_running = False
             return reward
@@ -75,15 +75,15 @@ class Snake:
             self.game.set_color_to_one_cell(self.game.food_position[0], self.game.food_position[1], GREEN) # draw new food
 
         # move snake
-        if reward != 10 and len(self.rest_of_body_positions): # if not growing this step, delete tail
+        if reward != POS_REWARD and len(self.rest_of_body_positions): # if not growing this step, delete tail
             self.game.set_color_to_one_cell(self.rest_of_body_positions[0][0], self.rest_of_body_positions[0][1],
                                        self.game.tile_color)
             self.rest_of_body_positions.pop(0)
             self.rest_of_body_positions.append(self.head_position)
-        if reward != 10 and len(self.rest_of_body_positions) == 0:
+        if reward != POS_REWARD and len(self.rest_of_body_positions) == 0:
             self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1],
                                        self.game.tile_color)
-        if reward == 10:
+        if reward == POS_REWARD:
             self.rest_of_body_positions.append(self.head_position)
 
         self.head_position = next_tile

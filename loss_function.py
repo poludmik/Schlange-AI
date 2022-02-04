@@ -12,23 +12,26 @@ class BellmanLoss(nn.Module):
         self.model = Qnet_model
 
 
-    def compute_loss(self, Q_values, transition: list):
+    def compute_loss(self, transition: list):
 
         lossF = nn.MSELoss(reduction='sum')
+        # lossF = nn.HuberLoss(reduction='sum')
 
         state0 = transition[0]
         action = transition[1]
         reward = transition[2]
         state1 = transition[3]
+        Q_values=transition[4]
 
-        Q = torch.max(Q_values)
+        Q_new = torch.clone(Q_values)
 
-        if state1 == DONE:
-            Q_new = reward
+        if state1[0] == DONE:
+            Q_new[torch.argmax(Q_values).item()] = reward
         else:
-            Q_new = reward + self.discount_factor * torch.max(self.model.forward_pass(state1))
+            Q_new[torch.argmax(Q_values).item()] = reward + self.discount_factor * torch.max(self.model.forward_pass(state1))
 
-        print("Dimension of Q_new:", Q_new.shape())
+        #print("Q_0:", Q_values)
+        #print("Q_n:", Q_new)
 
-        return lossF(Q, Q_new)
+        return lossF(Q_values, Q_new)
 

@@ -14,8 +14,8 @@ DARK_BLUE = (0, 25, 51)
 LEFT = [0, 1, 0]
 RIGHT = [0, 0, 1]
 STRAIGHT = [1, 0, 0]
-NEG_REWARD = -10
-POS_REWARD = 10
+NEG_REWARD = -5.0
+POS_REWARD = 5.0
 
 class SnakeGame:
 
@@ -83,7 +83,7 @@ class SnakeGame:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:  # If user clicked close button
                 quitting = True
-                game.end_screen()
+                self.end_screen()
                 print("Closing window.")
 
         reward = self.current_snake.make_step_by_given_action(action)
@@ -110,7 +110,7 @@ class SnakeGame:
             next_tile = (self.current_snake.head_position[0] + new_head_direction[1],
                          self.current_snake.head_position[1] + new_head_direction[0])
 
-            if (next_tile[0] < 0 or next_tile[0] >= game.width or next_tile[1] < 0 or next_tile[1] >= game.height) or \
+            if (next_tile[0] < 0 or next_tile[0] >= self.width or next_tile[1] < 0 or next_tile[1] >= self.height) or \
                     (next_tile[0], next_tile[1]) in self.current_snake.rest_of_body_positions:
                 # next tile in a wall or in the snake body
                 state[idx] = 1
@@ -143,7 +143,7 @@ class SnakeGame:
                                   (self.margin + self.cell_height) * row + self.margin,
                                    self.cell_width, self.cell_height]
                                  )
-                self.clock.tick(10000)
+
                 pygame.display.flip()
 
         self.food_position = (random.randint(1, self.width - 2), random.randint(1, self.height - 2))
