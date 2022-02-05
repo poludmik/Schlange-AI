@@ -18,11 +18,8 @@ class BellmanLoss(nn.Module):
     def compute_loss(self, batch, current_model, target_model):
 
         lossF = nn.MSELoss(reduction='sum')
-        # lossF = nn.HuberLoss(reduction='sum')
 
         states0, actions, rewards, states1 = zip(*batch)
-
-        # print("actions in loss:", actions)
 
         states0 = torch.tensor(states0, dtype=torch.float)
         actions = torch.tensor(actions)
@@ -31,8 +28,6 @@ class BellmanLoss(nn.Module):
 
         Q_values = self.model.forward_pass(states0)
         Q_new = torch.clone(Q_values)
-
-
 
         for idx in range(len(states0)):
             if states1[idx][0] == DONE:

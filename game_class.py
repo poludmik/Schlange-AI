@@ -70,6 +70,7 @@ class SnakeGame:
                     break
 
                 # checking if keydown event happened or not
+
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_a:
                         self.current_snake.make_step_by_given_action(LEFT)
@@ -106,7 +107,7 @@ class SnakeGame:
                  direction:   left, right, up, down
                       food:   left, right, up, down]
         """
-        state = [0] * 11
+        state = [0.0] * 11
 
         # If there are dangers on sratight, left or right tile
         for idx, action in enumerate([STRAIGHT, LEFT, RIGHT]):
@@ -117,7 +118,14 @@ class SnakeGame:
             if (next_tile[0] < 0 or next_tile[0] >= self.width or next_tile[1] < 0 or next_tile[1] >= self.height) or \
                     (next_tile[0], next_tile[1]) in self.current_snake.rest_of_body_positions:
                 # next tile in a wall or in the snake body
-                state[idx] = 1
+                state[idx] = 1.0
+
+            if len(self.current_snake.rest_of_body_positions) >= 3:
+                free_tiles = self.get_free_spaces_in_directions()
+                state[0] = free_tiles[0]
+                state[1] = free_tiles[1]
+                state[2] = free_tiles[2]
+
 
         # Direction of a head
         for idx, direction in enumerate(self.directions):
@@ -136,6 +144,49 @@ class SnakeGame:
             state[10] = 1 # food is down to the head
 
         return state
+
+
+    def get_free_spaces_in_directions(self):
+        free_spaces = [1.0, 1.0, 1.0]
+
+        def get_free_neighbours(tile):
+            # print(tile)
+            visited = [tile]
+            front = [tile]
+            while len(front) > 0:
+                current_tile = front.pop()
+                for direction in self.directions:
+                    next_current_tile = (current_tile[0] + self.directions[direction][1],
+                                         current_tile[1] + self.directions[direction][0])
+
+                    if next_current_tile[0] < 0 or next_current_tile[0] >= self.width or next_current_tile[1] < 0 or \
+                            next_current_tile[1] >= self.height or \
+                            (next_current_tile[0], next_current_tile[1]) in self.current_snake.rest_of_body_positions or \
+                            (next_current_tile[0], next_current_tile[1]) == self.current_snake.head_position:
+                        continue
+
+                    if next_current_tile not in visited:
+                        visited.append(next_current_tile)
+                        front.append(next_current_tile)
+
+            return visited
+
+
+        for idx, action in enumerate([STRAIGHT, LEFT, RIGHT]):
+            new_head_direction = self.current_snake.rotate_head_direction(self.current_snake.head_direction, action)
+            next_tile = (self.current_snake.head_position[0] + new_head_direction[1],
+                         self.current_snake.head_position[1] + new_head_direction[0])
+
+            if (next_tile[0] < 0 or next_tile[0] >= self.width or next_tile[1] < 0 or next_tile[1] >= self.height) or \
+                    (next_tile[0], next_tile[1]) in self.current_snake.rest_of_body_positions or \
+                    (next_tile[0], next_tile[1]) == self.current_snake.head_position:
+                # next tile is in a wall or in the snake body, free space = 0
+                continue
+
+            free_spaces[idx] = 1.0 - len(get_free_neighbours(next_tile)) / pow(self.width, 2)
+
+        return free_spaces
+
 
     def start_new_game(self):
         if self.animate:
@@ -215,7 +266,7 @@ class SnakeGame:
 if __name__ == "__main__":
     print("Starting gaming")
 
-    game = SnakeGame(12, dark=True, window_size=400)
+    game = SnakeGame(8, dark=True, window_size=400)
 
     play_on_keyboard = True
 

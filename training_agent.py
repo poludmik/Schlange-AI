@@ -29,7 +29,7 @@ def plot_info(epochas, losses, scores, epsilons):
     plt.plot(epochas, epsilons, label='Exploration rate (10x)')
     # trend
     df = pd.DataFrame(np.transpose(np.array([scores])))
-    plt.plot(df.expanding(min_periods=4).mean(), 'b', label='Score moving average of 4')
+    plt.plot(df.expanding(min_periods=4).mean(), 'b', label='Score, moving average of 4')
     plt.legend()
     plt.show()
 
@@ -38,7 +38,7 @@ class Agent:
 
     def __init__(self, size_of_gamefield=10, animate=False):
         self.size_of_gamefield = size_of_gamefield
-        self.game = game_class.SnakeGame(size_of_gamefield, dark=True, window_size=400, animate=animate)
+        self.game = game_class.SnakeGame(size_of_gamefield, dark=False, window_size=400, animate=animate)
         self.memory_stack = experience_stack.Memory()
         self.losses = []
         self.epochas = []
@@ -63,6 +63,7 @@ class Agent:
         if reward == NEG_REWARD:
             state1 = self.game.get_current_state()
             state1[0] = DONE
+            print("Total score:", len(self.game.current_snake.rest_of_body_positions))
         else:
             state1 = self.game.get_current_state()
 
@@ -72,16 +73,13 @@ class Agent:
 
     def train(self, model_to_train, model_target, batch_size):
 
-        # get a batch of transitions
         batch = random.sample(self.memory_stack.stack, batch_size)
-        #batch.to(self.device)
-
         loss_fc = loss_function.BellmanLoss(model_to_train, discount_factor=0.9)
 
-        # TODO: compute loss
+        # compute loss
         loss_local = loss_fc.compute_loss(batch, model_target, model_to_train)
 
-        # TODO: do the backward pass and update the gradients
+        # do the backward pass and update the gradients
         loss_local.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -93,17 +91,18 @@ class Agent:
         while True:
             self.get_one_transition(Qnet_model=model_to_check, expolation_probability=0.0)
 
+
 if __name__ == "__main__":
     print("Initiated learning process.")
 
     trained_model = model.Qnet()
-    model_path = "best_weights_for_size_10.pth"
-    model_path = "best_weights_for_size_8.pth"
+    model_path = "new_state_for_size_10_very_good.pth"
+    model_path = "new_state_more_better_for_size_10.pth"
     if model_path is not None:
         trained_model.load_state_dict(torch.load(model_path))
         trained_model.eval()
 
-    gamefield_size = 8
+    gamefield_size = 10
     check_progress = True
     if check_progress:
         agent = Agent(size_of_gamefield=gamefield_size, animate=True)
@@ -113,10 +112,10 @@ if __name__ == "__main__":
         agent = Agent(size_of_gamefield=gamefield_size, animate=False)
 
 
-    minimal_memory_size = 100
+    minimal_memory_size = 1000
     plt.style.use('seaborn-whitegrid')
     learning_rate = 0.001
-    exploration_epsilon_first = 0.7 # 0.7
+    exploration_epsilon_first = 0.0 # 0.7
     counter_of_trainings = 0
     maximal_score = 0
 
@@ -127,14 +126,16 @@ if __name__ == "__main__":
 
     while True:
         episode += 1
+        print(episode)
         game_over = False
         steps = 0
-        exploration_epsilon = max(0.01, min(0.7, exploration_epsilon_first / episode * 100)) # works great linearly
+        exploration_epsilon = max(0.00, min(0.7, exploration_epsilon_first / episode * 100)) # works great linearly
 
         while not game_over:
+
             one_transition = agent.get_one_transition(trained_model, expolation_probability=exploration_epsilon)
             agent.memory_stack.push(one_transition)
-
+            print(one_transition)
             if one_transition[3][0] == DONE:
                 game_over = True
 
@@ -151,12 +152,12 @@ if __name__ == "__main__":
                 agent.exploration_rates.append(exploration_epsilon)
                 if score > maximal_score:
                     maximal_score = score
-                    torch.save(trained_model.state_dict(), "best_weights_for_size_"+ str(agent.game.width) + ".pth")
+                    torch.save(trained_model.state_dict(), "new_state_more_better_for_size_"+ str(agent.game.width) + ".pth")
 
         # update target network (copy trained model)
         if episode % 100 == 0:
             print("Episode:", "{:5d}".format(episode),
-                  "  Average score:", "{:.2f}".format(sum(agent.scores[-100:]) / 100.0),
+                  "  Average score:", "{:2.2f}".format(sum(agent.scores[-100:]) / 100.0),
                   "  Eps:", "{:.2f}".format(exploration_epsilon))
             plot_info(agent.epochas, agent.losses, agent.scores, agent.exploration_rates)
             target_model = copy.deepcopy(trained_model)

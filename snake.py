@@ -47,7 +47,7 @@ class Snake:
             reward = NEG_REWARD
             if self.game.animate:
                 self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-                self.game.clock.tick(1000)
+                self.game.clock.tick(50)
                 pygame.display.flip()
             self.game.game_running = False
             return reward
@@ -57,7 +57,7 @@ class Snake:
             reward = NEG_REWARD
             if self.game.animate:
                 self.game.set_color_to_one_cell(self.head_position[0], self.head_position[1], RED)
-                self.game.clock.tick(1000)
+                self.game.clock.tick(50)
                 pygame.display.flip()
             self.game.game_running = False
             return reward
