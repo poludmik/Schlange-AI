@@ -1,7 +1,5 @@
 import pygame
-import math
 import random
-from tqdm import tqdm
 import snake
 
 BLACK = (0, 0, 0)
@@ -18,15 +16,19 @@ NEG_REWARD = -10.0
 POS_REWARD = 10.0
 
 class SnakeGame:
-
-    def __init__(self, size_of_gamefield=10, dark=True, window_size=400, animate=True):
+    """
+    Contains all the methods and instances that are needed to simulate the Snake game processes
+    visually using pygame or without animation.
+    Also has methods for the learning part (such as get_current_state or play_given_action_for_learning)
+    """
+    def __init__(self, size_of_gamefield=10, dark_mode=True, window_size=400, animate=True):
         self.window_size = window_size
         self.margin = 1
         self.width = size_of_gamefield
         self.height = size_of_gamefield
         self.cell_width = self.window_size// size_of_gamefield - self.margin
         self.cell_height = self.window_size// size_of_gamefield - self.margin
-        self.mode_is_dark = dark
+        self.mode_is_dark = dark_mode
         self.game_running = False
         self.screen = None
         self.clock = None
@@ -68,8 +70,6 @@ class SnakeGame:
                 if event.type == pygame.QUIT: # If user clicked close
                     quitting = True
                     break
-
-                # checking if keydown event happened or not
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_a:
@@ -150,7 +150,6 @@ class SnakeGame:
         free_spaces = [1.0, 1.0, 1.0]
 
         def get_free_neighbours(tile):
-            # print(tile)
             visited = [tile]
             front = [tile]
             while len(front) > 0:
@@ -200,7 +199,7 @@ class SnakeGame:
                                        self.cell_width, self.cell_height]
                                      )
 
-                    pygame.display.flip()
+            pygame.display.flip()
 
         self.food_position = (random.randint(1, self.width - 2), random.randint(1, self.height - 2))
         if self.animate:
@@ -226,7 +225,6 @@ class SnakeGame:
         pygame.display.flip()
 
     def draw_direction(self, r, c, direction):
-        # pygame.draw.polygon(self.screen, BLACK, [[100, 100], [0, 200], [200, 200]], 5)
         start_x = (self.margin + self.cell_width) * c + self.margin
         start_y = (self.margin + self.cell_height) * r + self.margin
 
@@ -266,21 +264,10 @@ class SnakeGame:
 if __name__ == "__main__":
     print("Starting gaming")
 
-    game = SnakeGame(8, dark=True, window_size=400)
+    game = SnakeGame(8, dark_mode=True, window_size=400)
 
-    play_on_keyboard = True
+    # Start playing on a keyboard (W, A, D)
+    game.play_games()
 
-    if play_on_keyboard:
-        game.play_games()
-    else:
-        # for learning, i.e.
-        for _ in tqdm(range(1000), position=0, leave=True):
-            game.ensure_game_is_running()
-            # get state
-            # decide
-            game.play_given_action_for_learning(action=random.choice([LEFT, RIGHT, STRAIGHT]))
-            # get reward
-            # store episode to memory..?:)
-            pygame.time.delay(100)
 
 

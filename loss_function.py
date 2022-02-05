@@ -1,21 +1,22 @@
-import copy
-
 import torch
 import torch.nn as nn
 import model
-import experience_stack
-import numpy as np
 
-DONE = 666
+DONE = 666 # Constant to indicate the end of an episode.
 
 class BellmanLoss(nn.Module):
+    """
+    Loss function is defined according to the Bellman equation. Penalises bad Q value predictions from the main net
+    using the target net, which is updated in the training_agent main loop every 100 episodes.
+    """
 
-    def __init__(self, Qnet_model: model.Qnet, discount_factor=0.9):
+    def __init__(self, Qnet_model: model.Qnet, target_model: model.Qnet, discount_factor=0.9):
         super(BellmanLoss, self).__init__()
         self.discount_factor = discount_factor
         self.model = Qnet_model
+        self.target_model = target_model
 
-    def compute_loss(self, batch, current_model, target_model):
+    def compute_loss(self, batch):
 
         lossF = nn.MSELoss(reduction='sum')
 

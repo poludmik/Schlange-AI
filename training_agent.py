@@ -1,15 +1,11 @@
 import copy
-import math
-import snake
 import game_class
 import matplotlib.pyplot as plt
-import pygame
 import random
 import torch
 import numpy as np
 import pandas as pd
 import model
-import torch.nn.functional as F
 import loss_function
 import experience_stack
 
@@ -35,10 +31,13 @@ def plot_info(epochas, losses, scores, epsilons):
 
 
 class Agent:
-
+    """
+    Training agent. Used for training the Q_net defined in model.py. Represents an instance capable of
+    taking an action from a given game state and updating Q_net accordingly.
+    """
     def __init__(self, size_of_gamefield=10, animate=False):
         self.size_of_gamefield = size_of_gamefield
-        self.game = game_class.SnakeGame(size_of_gamefield, dark=False, window_size=400, animate=animate)
+        self.game = game_class.SnakeGame(size_of_gamefield, dark_mode=True, window_size=800, animate=animate)
         self.memory_stack = experience_stack.Memory()
         self.losses = []
         self.epochas = []
@@ -63,7 +62,6 @@ class Agent:
         if reward == NEG_REWARD:
             state1 = self.game.get_current_state()
             state1[0] = DONE
-            print("Total score:", len(self.game.current_snake.rest_of_body_positions))
         else:
             state1 = self.game.get_current_state()
 
@@ -73,11 +71,11 @@ class Agent:
 
     def train(self, model_to_train, model_target, batch_size):
 
-        batch = random.sample(self.memory_stack.stack, batch_size)
-        loss_fc = loss_function.BellmanLoss(model_to_train, discount_factor=0.9)
+        batch = random.sample(self.memory_stack.queue, batch_size)
+        loss_fc = loss_function.BellmanLoss(model_to_train, model_target, discount_factor=0.9)
 
         # compute loss
-        loss_local = loss_fc.compute_loss(batch, model_target, model_to_train)
+        loss_local = loss_fc.compute_loss(batch)
 
         # do the backward pass and update the gradients
         loss_local.backward()
@@ -93,29 +91,29 @@ class Agent:
 
 
 if __name__ == "__main__":
-    print("Initiated learning process.")
 
     trained_model = model.Qnet()
-    model_path = "new_state_for_size_10_very_good.pth"
-    model_path = "new_state_more_better_for_size_10.pth"
+    model_path = "medium_of_35_weights.pth"
+    model_path = None
     if model_path is not None:
         trained_model.load_state_dict(torch.load(model_path))
         trained_model.eval()
 
     gamefield_size = 10
-    check_progress = True
+    check_progress = False
     if check_progress:
+        print("Checking achievements of " + str(model_path) + " model.")
         agent = Agent(size_of_gamefield=gamefield_size, animate=True)
         agent.check_progress(trained_model)
         exit()
     else:
+        print("Initiating learning process.")
         agent = Agent(size_of_gamefield=gamefield_size, animate=False)
-
 
     minimal_memory_size = 1000
     plt.style.use('seaborn-whitegrid')
     learning_rate = 0.001
-    exploration_epsilon_first = 0.0 # 0.7
+    exploration_epsilon_first = 0.7 # 0.7
     counter_of_trainings = 0
     maximal_score = 0
 
@@ -126,16 +124,14 @@ if __name__ == "__main__":
 
     while True:
         episode += 1
-        print(episode)
         game_over = False
         steps = 0
-        exploration_epsilon = max(0.00, min(0.7, exploration_epsilon_first / episode * 100)) # works great linearly
+        exploration_epsilon = max(0.01, min(0.7, exploration_epsilon_first / episode * 100)) # works great linearly
 
         while not game_over:
 
             one_transition = agent.get_one_transition(trained_model, expolation_probability=exploration_epsilon)
             agent.memory_stack.push(one_transition)
-            print(one_transition)
             if one_transition[3][0] == DONE:
                 game_over = True
 
@@ -152,7 +148,7 @@ if __name__ == "__main__":
                 agent.exploration_rates.append(exploration_epsilon)
                 if score > maximal_score:
                     maximal_score = score
-                    torch.save(trained_model.state_dict(), "new_state_more_better_for_size_"+ str(agent.game.width) + ".pth")
+                    torch.save(trained_model.state_dict(), "with_target_g_"+ str(agent.game.width) + ".pth")
 
         # update target network (copy trained model)
         if episode % 100 == 0:

@@ -1,10 +1,10 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class Qnet(nn.Module):
-
+    """
+    Small linear NN model to approximate the Q value function.
+    """
     def __init__(self):
         super(Qnet, self).__init__()
 
@@ -23,11 +23,3 @@ class Qnet(nn.Module):
         Q_values = state
 
         return Q_values
-
-    #def weight_init(self):
-    #    for lay in self.modules():
-    #        if type(lay) in [torch.nn.Linear]:
-    #            torch.nn.init.xavier_uniform_(lay.weight)
-
-
-
