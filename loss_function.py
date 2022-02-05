@@ -32,6 +32,8 @@ class BellmanLoss(nn.Module):
         Q_values = self.model.forward_pass(states0)
         Q_new = torch.clone(Q_values)
 
+
+
         for idx in range(len(states0)):
             if states1[idx][0] == DONE:
                 Q_new[idx][torch.argmax(actions[idx])] = rewards[idx]

@@ -22,27 +22,28 @@ STRAIGHT = [1, 0, 0]
 DONE = 666
 
 
-def plot_info(plot, epochas, losses, scores):
-    # plt.plot(epochas, losses, '-k', label='loss')
-    # plt.plot(epochas, scores, '-b', label='score')
+def plot_info(epochas, losses, scores, epsilons):
 
-    plot.set_xdata(np.append(plot.get_xdata(), losses))
-    plot.set_ydata(np.append(plot.get_ydata(), epochas))
-
+    plt.plot(epochas, scores, label='Score', linewidth=0.5)
+    epsilons = [item*10 for item in epsilons]
+    plt.plot(epochas, epsilons, label='Exploration rate (10x)')
     # trend
-    df = pd.DataFrame(np.transpose(np.array([losses])))
-    # plt.plot(df.expanding(min_periods=10).mean(), 'b')
-    plt.draw()
+    df = pd.DataFrame(np.transpose(np.array([scores])))
+    plt.plot(df.expanding(min_periods=4).mean(), 'b', label='Score moving average of 4')
+    plt.legend()
+    plt.show()
 
 
 class Agent:
 
     def __init__(self, size_of_gamefield=10, animate=False):
+        self.size_of_gamefield = size_of_gamefield
         self.game = game_class.SnakeGame(size_of_gamefield, dark=True, window_size=400, animate=animate)
         self.memory_stack = experience_stack.Memory()
         self.losses = []
         self.epochas = []
         self.scores = []
+        self.exploration_rates = []
 
     def get_one_transition(self, Qnet_model, expolation_probability=0.5):
         self.game.ensure_game_is_running()
@@ -87,39 +88,51 @@ class Agent:
 
         return loss_local.item()
 
+    def check_progress(self, model_to_check):
+        # play with epsilon=0 and best weights
+        while True:
+            self.get_one_transition(Qnet_model=model_to_check, expolation_probability=0.0)
 
 if __name__ == "__main__":
     print("Initiated learning process.")
-    agent = Agent(size_of_gamefield=8, animate=False)
-    minimal_memory_size = 100
-    model_path = None
-    plt.style.use('seaborn-whitegrid')
-
-    learning_rate = 0.001
-    counter_of_trainings = 0
-
-    hl, = plt.plot([], [])
 
     trained_model = model.Qnet()
-
-    # torch.autograd.set_detect_anomaly(True)
-
+    model_path = "best_weights_for_size_10.pth"
+    model_path = "best_weights_for_size_8.pth"
     if model_path is not None:
-        trained_model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        trained_model.load_state_dict(torch.load(model_path))
+        trained_model.eval()
+
+    gamefield_size = 8
+    check_progress = True
+    if check_progress:
+        agent = Agent(size_of_gamefield=gamefield_size, animate=True)
+        agent.check_progress(trained_model)
+        exit()
+    else:
+        agent = Agent(size_of_gamefield=gamefield_size, animate=False)
+
+
+    minimal_memory_size = 100
+    plt.style.use('seaborn-whitegrid')
+    learning_rate = 0.001
+    exploration_epsilon_first = 0.7 # 0.7
+    counter_of_trainings = 0
+    maximal_score = 0
+
 
     optimizer = torch.optim.Adam(trained_model.parameters(), lr=learning_rate)
-
     target_model = copy.deepcopy(trained_model)
-
     episode = 0
+
     while True:
         episode += 1
-        # TODO gain more transitions
         game_over = False
         steps = 0
-        while not game_over:
-            one_transition = agent.get_one_transition(trained_model, expolation_probability=0.1)
+        exploration_epsilon = max(0.01, min(0.7, exploration_epsilon_first / episode * 100)) # works great linearly
 
+        while not game_over:
+            one_transition = agent.get_one_transition(trained_model, expolation_probability=exploration_epsilon)
             agent.memory_stack.push(one_transition)
 
             if one_transition[3][0] == DONE:
@@ -133,12 +146,19 @@ if __name__ == "__main__":
                 counter_of_trainings += 1
                 agent.epochas.append(counter_of_trainings)
                 agent.losses.append(loss)
-                agent.scores.append(len(agent.game.current_snake.rest_of_body_positions))
+                score = len(agent.game.current_snake.rest_of_body_positions)
+                agent.scores.append(score)
+                agent.exploration_rates.append(exploration_epsilon)
+                if score > maximal_score:
+                    maximal_score = score
+                    torch.save(trained_model.state_dict(), "best_weights_for_size_"+ str(agent.game.width) + ".pth")
 
         # update target network (copy trained model)
         if episode % 100 == 0:
-            print("Episode:", episode,"  Average score:", sum(agent.scores) / 100.0)
-            agent.scores = []
+            print("Episode:", "{:5d}".format(episode),
+                  "  Average score:", "{:.2f}".format(sum(agent.scores[-100:]) / 100.0),
+                  "  Eps:", "{:.2f}".format(exploration_epsilon))
+            plot_info(agent.epochas, agent.losses, agent.scores, agent.exploration_rates)
             target_model = copy.deepcopy(trained_model)
 
 
