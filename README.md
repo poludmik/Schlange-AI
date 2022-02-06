@@ -1,5 +1,6 @@
-﻿
-<![endif]-->
+﻿@settings {
+  font-size: 100;
+}
 
 <img src="README/title.png">
 
@@ -22,7 +23,8 @@ The **pygame** library was used for the UI of the game. Game screen supports lig
 - **The implementation** consists of an agent class, neural net model, custom loss function class and a queue to store the training data (transitions *(s_0, a, r, s_1)*). The agent contains a bunch of different parameters and methods, that were used to experiment with learning.
 
 Neural **Qnet** on itself is a small linear 11x256x3 net, implemented with usage of pytorch. Is updated using the **loss_function.py** which can be described as following:
-<img src="README/loss_code.png" width="200">
+
+<img src="README/loss_code.png" width="650">
 
 ## Results
 
@@ -32,12 +34,13 @@ I was able to teach the NN to the level, that at the end of the game snake occup
 
 ## Modifications
 
-- **More sophisticated get_state**. Initially, the state that I fed to the NN was consisting of 11 zeros or ones. It was containing 3 states of *danger to the straight/left/right*, 4 states of *current head direction* and 4 states of the *direction to the food (left-up/left-down/right-up/right-down)*. It was fine, but I noticed that as the snake becomes longer and longer, it is extremely likely to trap itself in it's own body loop. That is because the state did't tell the snake how much more free space there is in a particular direction (only 3 danger bits). So I modified the first 3 bits of the state as following (old_state: *(1, 0, 0)* and new_state: *(1, 4/64, 51/64)*),
+- **More sophisticated get_state**. Initially, the state that I fed to the NN was consisting of 11 zeros or ones. It was containing 3 states of *danger to the straight/left/right*, 4 states of *current head direction* and 4 states of the *direction to the food (left-up/left-down/right-up/right-down)*. It was fine, but I noticed that as the snake becomes longer and longer, it is extremely likely to trap itself in it's own body loop. That is because the state did't tell the snake how much more free space there is in a particular direction (only 3 danger bits). So I modified the first 3 bits of the state as following example: (old_state: *(1, 0, 0)* and new_state: *(1, 4/64, 51/64)*). After this, the performance of the learning algorithm has improved significantly, and the snake didn't trap itself so frequently.
+
 <img src="README/old_state.png" width="200">
 <img src="README/new_state.png" width="200">
-After this, the performance of the learning algorithm had improved significantly, and the snake didn't trap itself so frequently.
+
 
 - **Adding memory playback and target model**.  Storing a queue of transitions and training on a minibatch from it (i.e. with size 1000) improved the speed of learning. Introducing target model, which is not updated using gradient descent, but is updated as a copy of the main trained net every i.e. 100 episodes, only slowed down the convergence. I guess, because the model is quiet small for that to give any improvement.
 
 Progress of learning (episodes on x axis):
-<img src="README/graph.png" width="300">
+<img src="README/graph.png" width="600">
