@@ -1,8 +1,4 @@
-﻿@settings {
-  font-size: 100;
-}
-
-<img src="README/title.png">
+﻿<img src="README/title2.png">
 
 # Snake Game AI
 
@@ -12,7 +8,7 @@ Classic snake game implementation with pygame and an environment for teaching th
 
 The snake game on its own is implemented in **game_class.py** and **snake.py** files.
 
-The **pygame** library was used for the UI of the game. Game screen supports light⬜ and dark🟦 mode and has adjustable parameters, such as size of the screen and game field size (width in squares).
+The **pygame** library was used for the UI of the game. Game screen supports light⬜ and dark🌑 mode and has adjustable parameters, such as size of the screen and game field size (width in squares).
 
 >The game can be tested in game_class.py main function, when the user controls the snake with W, A, D buttons.
 
@@ -24,7 +20,7 @@ The **pygame** library was used for the UI of the game. Game screen supports lig
 
 Neural **Qnet** on itself is a small linear 11x256x3 net, implemented with usage of pytorch. Is updated using the **loss_function.py** which can be described as following:
 
-<img src="README/loss_code.png" width="650">
+<img src="README/loss_code.png">
 
 ## Results
 
