@@ -35,9 +35,9 @@ class Agent:
     Training agent. Used for training the Q_net defined in model.py. Represents an instance capable of
     taking an action from a given game state and updating Q_net accordingly.
     """
-    def __init__(self, size_of_gamefield=10, animate=False):
+    def __init__(self, size_of_gamefield=10, animate=False, wide=False):
         self.size_of_gamefield = size_of_gamefield
-        self.game = game_class.SnakeGame(size_of_gamefield, dark_mode=True, window_size=800, animate=animate)
+        self.game = game_class.SnakeGame(size_of_gamefield, dark_mode=False, window_size=600, animate=animate, wide=wide)
         self.memory_stack = experience_stack.Memory()
         self.losses = []
         self.epochas = []
@@ -94,18 +94,17 @@ if __name__ == "__main__":
 
     trained_model = model.Qnet()
     model_path = "medium_of_35_weights.pth"
-    model_path = None
+    #model_path = "for_video_10.pth"
     if model_path is not None:
         trained_model.load_state_dict(torch.load(model_path))
         trained_model.eval()
 
     gamefield_size = 10
-    check_progress = False
+    check_progress = True
     if check_progress:
         print("Checking achievements of " + str(model_path) + " model.")
-        agent = Agent(size_of_gamefield=gamefield_size, animate=True)
+        agent = Agent(size_of_gamefield=gamefield_size, animate=True, wide=False)
         agent.check_progress(trained_model)
-        exit()
     else:
         print("Initiating learning process.")
         agent = Agent(size_of_gamefield=gamefield_size, animate=False)
@@ -148,7 +147,7 @@ if __name__ == "__main__":
                 agent.exploration_rates.append(exploration_epsilon)
                 if score > maximal_score:
                     maximal_score = score
-                    torch.save(trained_model.state_dict(), "with_target_g_"+ str(agent.game.width) + ".pth")
+                    torch.save(trained_model.state_dict(), "for_video_" + str(agent.game.width) + ".pth")
 
         # update target network (copy trained model)
         if episode % 100 == 0:

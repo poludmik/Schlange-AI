@@ -1,6 +1,7 @@
 import pygame
 import random
 import snake
+import math
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -21,17 +22,19 @@ class SnakeGame:
     visually using pygame or without animation.
     Also has methods for the learning part (such as get_current_state or play_given_action_for_learning)
     """
-    def __init__(self, size_of_gamefield=10, dark_mode=True, window_size=400, animate=True):
+    def __init__(self, size_of_gamefield=10, dark_mode=True, window_size=400, animate=True, wide=False):
         self.window_size = window_size
         self.margin = 1
+        self.wide = wide
         self.width = size_of_gamefield
         self.height = size_of_gamefield
+        if self.wide:
+            self.height = math.floor(self.height * 2.5)
         self.cell_width = self.window_size// size_of_gamefield - self.margin
         self.cell_height = self.window_size// size_of_gamefield - self.margin
         self.mode_is_dark = dark_mode
         self.game_running = False
         self.screen = None
-        self.clock = None
         self.animate = animate
         self.grid = []
         self.food_position = None
@@ -46,10 +49,15 @@ class SnakeGame:
         self.directions = {"left":[-1, 0], "right":[1, 0], "up":[0, -1], "down":[0, 1]}
 
         if self.animate:
-            self.screen = pygame.display.set_mode([self.window_size + self.margin, self.window_size + self.margin + 30])
+            h = self.window_size + self.margin
+            w = self.window_size + self.margin + 30
+            if self.wide:
+                h = h * 2.5
+            self.screen = pygame.display.set_mode([h, w])
             pygame.display.set_caption("Schlange")
-            programIcon = pygame.image.load('moray_huge.jpg')
+            programIcon = pygame.image.load('README/moray_huge.jpg')
             pygame.display.set_icon(programIcon)
+
         self.clock = pygame.time.Clock()
         pygame.font.init()
         self.myfont = pygame.font.SysFont('hpsimplifiedjpanregular', 20)
@@ -86,7 +94,6 @@ class SnakeGame:
         if self.animate:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:  # If user clicked close button
-                    quitting = True
                     self.end_screen()
                     print("Closing window.")
 
@@ -199,6 +206,7 @@ class SnakeGame:
                                        self.cell_width, self.cell_height]
                                      )
 
+            self.clock.tick(1)
             pygame.display.flip()
 
         self.food_position = (random.randint(1, self.width - 2), random.randint(1, self.height - 2))
@@ -252,6 +260,8 @@ class SnakeGame:
                                  [start_x + self.cell_width - 2 * self.margin - 1, start_y + 2 * self.margin - 1],
                                  [start_x + self.cell_width // 2, start_y + self.cell_height // 2]], width=0)
 
+            pygame.display.flip()
+
     def end_screen(self):
         if self.game_running and self.animate:
             pygame.quit()
@@ -264,7 +274,7 @@ class SnakeGame:
 if __name__ == "__main__":
     print("Starting gaming")
 
-    game = SnakeGame(8, dark_mode=True, window_size=400)
+    game = SnakeGame(8, dark_mode=True, window_size=600, animate=True, wide=False)
 
     # Start playing on a keyboard (W, A, D)
     game.play_games()

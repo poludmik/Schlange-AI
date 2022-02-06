@@ -37,4 +37,3 @@ class BellmanLoss(nn.Module):
                 Q_new[idx][torch.argmax(actions[idx])] = rewards[idx] + self.discount_factor * torch.max(self.model.forward_pass(states1[idx]))
 
         return lossF(Q_values, Q_new)
-
